@@ -1,66 +1,36 @@
-﻿using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-using UnityEditor;
-
-public class FpsCamera : MonoBehaviour{
+public class Camera : MonoBehaviour{
 
     [SerializeField] private Transform PlayerTranform;
-
     [SerializeField] private Vector2 sensitivity = Vector2.zero;
-    [SerializeField] private bool smoothRotation = true;
-    [SerializeField] private Vector2 smoothness = Vector2.zero;
-    [SerializeField] private Vector2 YlookAngle = Vector2.zero;
+    [SerializeField] private Vector2 YlookAngle = new Vector2(-90f, 90f);
 
-    private float cameraXrotation = 0f;
+    [Space(10)]
 
-    private float rotationX = 0f;
-    private float rotationY = 0f;
+    [SerializeField][Range(0.5f,10f)] private float smothInput = 8f;
 
-    private Vector2 mouseInput;
+    private Vector2 smoothMouse;
+    private float cameraXrotation;
 
-    void Awake(){
+     private void Start(){
         Cursor.lockState = CursorLockMode.Locked;
-        PlayerTranform = this.transform.parent.gameObject.transform;
     }
 
-    void Update()
-    {
-
-        //  PREPARE THE INPUTS
-
-        mouseInput = new Vector2(
-            Input.GetAxis("Mouse X"), Input.GetAxis("Mouse Y")
+    private void Update(){
+        Vector2 mouse = new Vector2(
+            Input.GetAxis("Mouse X") * sensitivity.x * Time.deltaTime, 
+            Input.GetAxis("Mouse Y") * sensitivity.y * Time.deltaTime
         );
 
-        float desiredRotationX = mouseInput.x * sensitivity.x * Time.deltaTime;
-        float desiredRotationY = mouseInput.y * sensitivity.y * Time.deltaTime;
-
-        //  SMOOTH INPUTS
-
-        rotationX = smoothRotation ? Mathf.Lerp(rotationX, desiredRotationX, smoothness.x * Time.deltaTime) : desiredRotationX;
-        rotationY = smoothRotation ? Mathf.Lerp(rotationY, desiredRotationY, smoothness.y * Time.deltaTime) : desiredRotationY;
-
-        //  APPLY ROTATIONS
-
-        cameraXrotation -= rotationY; // Invert the rotation
+        smoothMouse = Vector2.Lerp(smoothMouse, mouse, Time.deltaTime * smothInput);
+    
+        cameraXrotation -= smoothMouse.y; // Invert the rotation
         cameraXrotation = Mathf.Clamp(cameraXrotation, YlookAngle.x, YlookAngle.y);
         
+        // APPLY ROTATION
+
         this.transform.localRotation = Quaternion.Euler(cameraXrotation, this.transform.localRotation.y, this.transform.localRotation.z);
-        
-        PlayerTranform.Rotate(Vector3.up * rotationX);
-    }
-
-    //  Dont acces CameraEffects direcly throght the FpsController to prevent
-    // Thread isues like the CameraEffect being executed before Fps Camera 
-    //  (that will causes the camera to not rotate)
-
-    public void HandleSway(float rawXInput){
-        this.GetComponent<CameraEffects>().ApplySway(rawXInput);
-    }
-
-    public void HandleZoom(bool isRunning, bool forward){
-        this.GetComponent<CameraEffects>().ApplyZoom(isRunning, forward);
+        PlayerTranform.Rotate(Vector3.up * smoothMouse.x);
     }
 }

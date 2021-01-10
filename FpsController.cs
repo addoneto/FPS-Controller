@@ -1,142 +1,84 @@
-﻿using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-public class FpsController : MonoBehaviour{
+public class Controller : MonoBehaviour{
+
+    [Header("Controller")]
 
     [SerializeField] private CharacterController controller;
 
-    [SerializeField] private float smoothInputAmount = 10f;
+    [Header("Movement Settings")]
 
-    [SerializeField] private float walkSpeed = 10f;
-    [Range(1f,2f)][SerializeField] private float runMultiplaier = 1.5f;
-    [Range(0f,1f)][SerializeField] private float backwardsSpeedPercent = 0.5f;
-    [Range(0f,1f)][SerializeField] private float sideSpeedPercent = 0.75f;
+    [SerializeField] private float speed = 5f;
+    [Range(1f,10f)][SerializeField] private float smoothAmount = 5f;
 
-    [SerializeField] private float jumpForce = 10f;
+    private Vector2 smoothInput;
+    
+    [Header("Gravity & Jump Settings")]
 
-    private Vector2 smoothMoveInput = Vector2.zero;
-    [SerializeField] private float currentVelocity;
+    [SerializeField] private float gravity = -9f;
+    [SerializeField] private float jumpHeight = 1f;
+    [SerializeField] private float stickToGroundForce = -1f;
 
-    [SerializeField] private float airSmoothDecayAmount = 3f;
+    [Space(5)]
 
     [SerializeField] private Transform groundCheckTranform;
-    [SerializeField] private float gravity = -10f;
-    private bool isGrounded = false;
     [SerializeField] private LayerMask groundLayer;
-    [SerializeField] private float stickToGroundForce = -5f;
-    [Range(0.01f,0.5f)][SerializeField] private float raySphereRadius = 0.1f;
+    [SerializeField] private float raySphereRadius = 0.2f;
+    
+    private float yVel;
+    private bool isGrounded;
 
-    [SerializeField] private Vector2 moveInput = Vector2.zero;
-    private float yVel = 0f;
+    [Header("Camera")]
 
     [SerializeField] private GameObject camera;
-    private bool isRunning = false;
 
-    [SerializeField] private Animator CharacterAnimator;
+    // TODO: Diferent Velocities to each direction (And smooth transition between them)
+    // TODO: Velocity decay on air
 
-    //  TODO: SMOOTH THE TRANSITION BETWEEN SPEEDS
-    //  TODO: HEAD BOB
+    private void Update() {
 
-    //private float maxBackwardSpeed, maxFowardSpeed, minSideSpeed, maxSideSpeed = 0f;
-    private Vector2 resultInput;
+        #region Gravity
 
-    private void Awake(){
-        currentVelocity = walkSpeed;
-        controller = this.GetComponent<CharacterController>();
-
-        // maxBackwardSpeed = walkSpeed * backwardsSpeedPercent *
-        // maxFowardSpeed = maxSideSpeed * runMultiplaier;
-        // minSideSpeed =
-        // maxSideSpeed = 
-    }
-
-    private void Update(){
-
-        //  GRAVITY
         isGrounded = Physics.CheckSphere(groundCheckTranform.position, raySphereRadius, groundLayer);
 
-        if(isGrounded && yVel < 0){
-            yVel = stickToGroundForce;
-        }
+        if(isGrounded && yVel < 0) yVel = stickToGroundForce;
+        yVel += gravity *  Time.deltaTime;
 
-        // HANDLE INPUTS
-        if(isGrounded){
-            moveInput = new Vector2(
-                Input.GetAxisRaw("Horizontal"), 
-                Input.GetAxisRaw("Vertical")  
-            );
+        #endregion
 
-            moveInput.Normalize();
-        }else{
-            moveInput = Vector2.Lerp(moveInput, Vector2.zero, Time.deltaTime * airSmoothDecayAmount);
-        }
+        #region Movement
 
-        smoothMoveInput = Vector2.Lerp(smoothMoveInput, moveInput, Time.deltaTime * smoothInputAmount); 
+        Vector2 rawInput = new Vector2(
+            Input.GetAxisRaw("Horizontal"),
+            Input.GetAxisRaw("Vertical")
+        );
 
-        // HANDLE VELOCITIES
-        if(moveInput.y == 1){
-            currentVelocity = walkSpeed;
-        }else if(moveInput.y == -1){
-            currentVelocity = walkSpeed * backwardsSpeedPercent;
-        }else if(moveInput.x > 0.5 ||  moveInput.x < -0.5 && moveInput.y == 0 ){
-            currentVelocity = walkSpeed * sideSpeedPercent;
-        }
+        rawInput.Normalize();
 
-        //  RUNNING
-        if(Input.GetKeyDown(KeyCode.LeftShift)){
-            isRunning = true;
-        }else if(Input.GetKeyUp(KeyCode.LeftShift)){
-            isRunning = false;
-        }
+        smoothInput = Vector2.Lerp(smoothInput, rawInput, Time.deltaTime * smoothAmount);
 
-        // if(isRunning && moveInput != Vector2.zero && currentVelocity < currentVelocity * runMultiplaier){
-        //     currentVelocity = currentVelocity * runMultiplaier;
-        // }
+        Vector3 moveDirection = transform.right * smoothInput.x + transform.forward * smoothInput.y;
 
-        //  JUMPING
+        #endregion
+
+        #region Jump
+
         if(Input.GetButtonDown("Jump") && isGrounded){
-            yVel = Mathf.Sqrt(jumpForce * -2f * gravity);
+            yVel = Mathf.Sqrt(jumpHeight * -2f * gravity);
         }
 
-        //  RELATIVE MOVIMENT
-        Vector3 moveDirection = transform.right * smoothMoveInput.x + transform.forward * smoothMoveInput.y;
+        #endregion
 
-        //  APPLY GRAVITY
-        yVel += gravity * Time.deltaTime;
-        //moveDirection.y += yVel * Time.deltaTime;
-
-        //  APPLY MOVIMENT
-        if(isRunning)
-            controller.Move(moveDirection * currentVelocity * runMultiplaier * Time.deltaTime);
-        else
-            controller.Move(moveDirection * currentVelocity * Time.deltaTime);
-        controller.Move(new Vector3(0f, yVel, 0f) * Time.deltaTime);
-
-        //  APPLY RUNNING FOV
-        if(moveInput.y != 0f)
-            camera.GetComponent<FpsCamera>().HandleZoom(isRunning, moveInput.y == 1);
-
-        //  APPLY SWAY
-        camera.GetComponent<FpsCamera>().HandleSway(moveInput.x);
-
-        //  ANIMATION
-        if(isRunning)
-            resultInput = new Vector2(smoothMoveInput.x * 2, smoothMoveInput.y * 2);
-        else
-            resultInput = smoothMoveInput;
-
-        CharacterAnimator.SetFloat("Xspeed", scale(-1, 1, -2f, 2f, resultInput.x) );
-        CharacterAnimator.SetFloat("Yspeed", scale(-1, 1, -2f, 2f, resultInput.y) );
+        #region ApplyMovement
+            controller.Move(new Vector3(0f, yVel, 0f) * Time.deltaTime);
+            controller.Move(moveDirection * speed * Time.deltaTime);
+        #endregion
 
     }
 
-    public float scale(float OldMin, float OldMax, float NewMin, float NewMax, float OldValue){
- 
-        float OldRange = (OldMax - OldMin);
-        float NewRange = (NewMax - NewMin);
-        float NewValue = (((OldValue - OldMin) * NewRange) / OldRange) + NewMin;
- 
-        return(NewValue);
+    private void OnDrawGizmosSelected(){
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(groundCheckTranform.position, raySphereRadius);
     }
+
 }
