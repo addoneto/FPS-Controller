@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class Controller : MonoBehaviour{
+public class FpsController : MonoBehaviour{
 
     [Header("Controller")]
 
@@ -8,14 +8,23 @@ public class Controller : MonoBehaviour{
 
     [Header("Movement Settings")]
 
-    [SerializeField] private float speed = 5f;
-    [Range(1f,10f)][SerializeField] private float smoothAmount = 5f;
+    [SerializeField] private float forwardSpeed = 5f;
+    [SerializeField] private float backwardSpeed = 2f;
+    [SerializeField] private float sidewardSpeed = 3.5f;
+
+    [Range(1f,2f)][SerializeField] private float runningMultiplaier = 1.5f;
+
+    [Space(2)]
+
+    [Range(1f,10f)][SerializeField] private float smoothAmount = 9f;
 
     private Vector2 smoothInput;
+    private float currentSpeed;
+    private bool isRunning;
     
     [Header("Gravity & Jump Settings")]
 
-    [SerializeField] private float gravity = -9f;
+    [SerializeField] private float gravity = -25f;
     [SerializeField] private float jumpHeight = 1f;
     [SerializeField] private float stickToGroundForce = -1f;
 
@@ -23,7 +32,7 @@ public class Controller : MonoBehaviour{
 
     [SerializeField] private Transform groundCheckTranform;
     [SerializeField] private LayerMask groundLayer;
-    [SerializeField] private float raySphereRadius = 0.2f;
+    [SerializeField] private float raySphereRadius = 0.3f;
     
     private float yVel;
     private bool isGrounded;
@@ -31,9 +40,10 @@ public class Controller : MonoBehaviour{
     [Header("Camera")]
 
     [SerializeField] private GameObject camera;
-
-    // TODO: Diferent Velocities to each direction (And smooth transition between them)
+    
     // TODO: Velocity decay on air
+    // TODO: Other camera effects
+    // TODO: Step sounds
 
     private void Update() {
 
@@ -41,7 +51,7 @@ public class Controller : MonoBehaviour{
 
         isGrounded = Physics.CheckSphere(groundCheckTranform.position, raySphereRadius, groundLayer);
 
-        if(isGrounded && yVel < 0) yVel = stickToGroundForce;
+        if(isGrounded && yVel < 0){ yVel = stickToGroundForce; }
         yVel += gravity *  Time.deltaTime;
 
         #endregion
@@ -61,6 +71,27 @@ public class Controller : MonoBehaviour{
 
         #endregion
 
+        #region Velocities/Running
+
+        if(rawInput.y == 1f){ // Walking forward
+            currentSpeed = forwardSpeed;
+        }else if(rawInput.y == -1f){ // Walking backward
+            currentSpeed = backwardSpeed;
+        }else{ // Walking sidewars or diagonaly
+            currentSpeed = sidewardSpeed;
+        }
+
+        if(Input.GetKey(KeyCode.LeftShift)){
+            currentSpeed *= runningMultiplaier;
+            isRunning = true;
+        }
+
+        if(Input.GetKeyUp(KeyCode.LeftShift)){
+            isRunning = false;
+        }
+
+        #endregion
+
         #region Jump
 
         if(Input.GetButtonDown("Jump") && isGrounded){
@@ -71,9 +102,14 @@ public class Controller : MonoBehaviour{
 
         #region ApplyMovement
             controller.Move(new Vector3(0f, yVel, 0f) * Time.deltaTime);
-            controller.Move(moveDirection * speed * Time.deltaTime);
+            controller.Move(moveDirection * currentSpeed * Time.deltaTime);
         #endregion
 
+        #region CameraEffects
+            if(rawInput.x != 0 ||rawInput.y != 0){
+                camera.GetComponent<HeadBob>().ScrollHeadBob(isRunning);
+            }
+        #endregion
     }
 
     private void OnDrawGizmosSelected(){

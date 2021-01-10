@@ -1,9 +1,9 @@
 using UnityEngine;
 
-public class Camera : MonoBehaviour{
+public class FpsCamera : MonoBehaviour{
 
     [SerializeField] private Transform PlayerTranform;
-    [SerializeField] private Vector2 sensitivity = Vector2.zero;
+    [SerializeField] private Vector2 sensitivity = new Vector2(250f, 250f);
     [SerializeField] private Vector2 YlookAngle = new Vector2(-90f, 90f);
 
     [Space(10)]
