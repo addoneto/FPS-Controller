@@ -42,7 +42,6 @@ public class FpsController : MonoBehaviour{
     [SerializeField] private GameObject camera;
     
     // TODO: Velocity decay on air
-    // TODO: Other camera effects
     // TODO: Step sounds
 
     private void Update() {
@@ -106,9 +105,18 @@ public class FpsController : MonoBehaviour{
         #endregion
 
         #region CameraEffects
-            if(rawInput.x != 0 ||rawInput.y != 0){
-                camera.GetComponent<HeadBob>().ScrollHeadBob(isRunning);
-            }
+
+        // HEAD BOB
+        if(rawInput.x != 0 ||rawInput.y != 0){
+            camera.GetComponent<HeadBob>().ScrollHeadBob(isRunning);
+        }
+
+        //  RUNNING FOV
+        camera.GetComponent<CameraEffects>().Zoom(isRunning, rawInput.y != 0f, rawInput.y == 1);
+
+        // SIDE SWAY
+        camera.GetComponent<CameraEffects>().Sway(rawInput.x);
+
         #endregion
     }
 
