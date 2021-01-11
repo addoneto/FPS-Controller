@@ -46,5 +46,6 @@ public class HeadBob : MonoBehaviour{
             this.transform.localPosition.z
         );
 
+        //Debug.Log(xCurve.Evaluate(xCurvePos));
     }
 }

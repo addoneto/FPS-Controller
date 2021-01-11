@@ -35,14 +35,13 @@ public class FpsController : MonoBehaviour{
     [SerializeField] private float raySphereRadius = 0.3f;
     
     private float yVel;
-    private bool isGrounded;
+    public bool isGrounded { get; private set; }
 
     [Header("Camera")]
 
     [SerializeField] private GameObject camera;
     
     // TODO: Velocity decay on air
-    // TODO: Step sounds
 
     private void Update() {
 
