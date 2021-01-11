@@ -16,11 +16,15 @@ public class FpsController : MonoBehaviour{
 
     [Space(2)]
 
+    // More smoothAmount intuitively means less smoothness
     [Range(1f,10f)][SerializeField] private float smoothAmount = 9f;
 
     private Vector2 smoothInput;
     private float currentSpeed;
     private bool isRunning;
+
+    private Vector2 applyInput;
+    private float applySpeed;
     
     [Header("Gravity & Jump Settings")]
 
@@ -33,6 +37,11 @@ public class FpsController : MonoBehaviour{
     [SerializeField] private Transform groundCheckTranform;
     [SerializeField] private LayerMask groundLayer;
     [SerializeField] private float raySphereRadius = 0.3f;
+
+    [Space(5)]
+
+    [Range(0f,4f)][SerializeField] private float airVelocityControll = 2f;
+    [Range(1f,1.2f)][SerializeField] private float airDrag = 2f;
     
     private float yVel;
     public bool isGrounded { get; private set; }
@@ -40,8 +49,7 @@ public class FpsController : MonoBehaviour{
     [Header("Camera")]
 
     [SerializeField] private GameObject camera;
-    
-    // TODO: Velocity decay on air
+
 
     private void Update() {
 
@@ -64,8 +72,6 @@ public class FpsController : MonoBehaviour{
         rawInput.Normalize();
 
         smoothInput = Vector2.Lerp(smoothInput, rawInput, Time.deltaTime * smoothAmount);
-
-        Vector3 moveDirection = transform.right * smoothInput.x + transform.forward * smoothInput.y;
 
         #endregion
 
@@ -94,19 +100,41 @@ public class FpsController : MonoBehaviour{
 
         if(Input.GetButtonDown("Jump") && isGrounded){
             yVel = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            applySpeed = currentSpeed;
+        }
+
+        #endregion
+
+        #region AirVelocityControllDecay
+
+        if(isGrounded){
+            applyInput = smoothInput;
+            applySpeed = currentSpeed;
+        }else{
+            applySpeed /= airDrag;
+        }
+        
+        Vector3 moveDirection = transform.right * applyInput.x + transform.forward * applyInput.y;
+        Vector3 finalMove = moveDirection * applySpeed * Time.deltaTime;
+
+        if(!isGrounded && (rawInput.x != 0f || rawInput.y != 0f)){
+            // Apply a friction/drag force according to 'airVelocityControll'
+
+            Vector3 newFinal = transform.right * ((applyInput.x * applySpeed) + smoothInput.x * airVelocityControll) + transform.forward * ((applyInput.y * applySpeed) + smoothInput.y * airVelocityControll);
+            finalMove = newFinal * Time.deltaTime;
         }
 
         #endregion
 
         #region ApplyMovement
             controller.Move(new Vector3(0f, yVel, 0f) * Time.deltaTime);
-            controller.Move(moveDirection * currentSpeed * Time.deltaTime);
+            controller.Move(finalMove);
         #endregion
 
         #region CameraEffects
 
         // HEAD BOB
-        if(rawInput.x != 0 ||rawInput.y != 0){
+        if( (rawInput.x != 0 || rawInput.y != 0) && isGrounded){
             camera.GetComponent<HeadBob>().ScrollHeadBob(isRunning);
         }
 
